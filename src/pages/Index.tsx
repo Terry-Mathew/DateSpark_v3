@@ -4,10 +4,11 @@ import FeatureCard from "@/components/FeatureCard";
 import TestimonialCard from "@/components/TestimonialCard";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Upload, MessageCircle, Camera, Heart, Sparkles, Users, Edit, Zap, MessageSquare, Star, PenLine } from "lucide-react";
+import { Upload, MessageCircle, Camera, Heart, Sparkles, Users, Edit, Zap, MessageSquare, Star, PenLine, LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import ScrollFadeIn from "@/components/ScrollFadeIn";
+import { AnimatePresence, motion } from "framer-motion";
 
 const ProcessCard = ({ 
   icon: Icon, 
@@ -15,16 +16,16 @@ const ProcessCard = ({
   description, 
   iconPosition = 'left' 
 }: { 
-  icon: any;
+  icon: LucideIcon;
   title: string;
   description: string;
   iconPosition?: 'left' | 'right';
 }) => (
-  <div className="p-6 bg-gray-50/50 rounded-xl border border-gray-100 hover:border-primary/20 transition-all duration-300 shadow-sm hover:shadow">
+  <div className="p-6 bg-gray-50/70 rounded-xl border border-gray-100 hover:border-primary/30 hover:bg-gray-50/90 transition-all duration-300 shadow-sm hover:shadow-md transform hover:translate-y-[-2px]">
     <div className={`flex items-start gap-6 ${iconPosition === 'right' ? 'flex-row-reverse' : 'flex-row'}`}>
       <div className="flex-shrink-0">
         <div className="p-4 rounded-xl bg-white shadow-sm border border-gray-100">
-          <Icon className="h-8 w-8 text-primary" /> {/* Increased icon size by 20% */}
+          <Icon className="h-10 w-10 text-primary" /> {/* Increased by 20% from h-8 w-8 */}
         </div>
       </div>
       <div className={`flex-1 ${iconPosition === 'right' ? 'text-right' : 'text-left'}`}>
@@ -43,71 +44,58 @@ const Index = () => {
       <Navbar />
       
       <main className="flex-1">
-        {/* Hero Section */}
+      {/* Hero Section */}
         <section className="relative py-12 md:py-24 overflow-hidden bg-background">
           <div className="container px-4 md:px-6">
             <div className="text-center max-w-[85rem] mx-auto">
-              {/* Main Headline */}
-              <h1 className="text-[32px] md:text-[48px] font-bold tracking-tight leading-tight mb-4 md:mb-6">
+              {/* Main Headline - With Animation */}
+              <motion.h1 
+                className="text-[32px] md:text-[52px] font-bold tracking-tight leading-tight mb-6 md:mb-8"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+              >
                 <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                   Find Your Perfect Match
                 </span>
-              </h1>
+              </motion.h1>
               
-              {/* Subheadline */}
-              <h2 className="text-xl md:text-[24px] font-semibold text-foreground/90 max-w-3xl mx-auto mb-4">
+              {/* Subheadline - With Animation */}
+              <motion.h2 
+                className="text-xl md:text-[26px] font-semibold text-foreground/90 max-w-3xl mx-auto mb-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
                 Transform Your Dating Profile and Attract Better Matches with AI-Powered Insights
-              </h2>
+              </motion.h2>
               
-              {/* Lead Text */}
-              <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-8 md:mb-12 px-4">
+              {/* Lead Text - With Animation */}
+              <motion.p 
+                className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 md:mb-14 px-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+              >
                 Get personalized insights, engaging bios, and conversation starters that make you stand out.
-              </p>
+              </motion.p>
               
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4 px-4 mb-8 md:mb-16">
-                {/* Primary CTA */}
-                <div className="w-full sm:w-auto">
-                  <Link to="/profile-analysis" className="block">
-                    <Button
-                      size="lg"
-                      className="w-full sm:w-auto px-6 py-6 text-base md:text-lg bg-secondary 
-                      hover:bg-[#D93D66] text-white shadow-xl hover:shadow-2xl 
-                      hover:shadow-secondary/30 transform hover:-translate-y-0.5 
-                      transition-all duration-300"
-                    >
-                      <Camera className="mr-2 md:mr-3 h-5 w-5 md:h-6 md:w-6" />
-                      Analyze My Photos
-                    </Button>
-                  </Link>
-                </div>
-
-                {/* Secondary CTA */}
-                <div className="w-full sm:w-auto">
-                  <Link to="/how-it-works" className="block">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="w-full sm:w-auto px-6 py-6 text-base md:text-lg 
-                      border-secondary/30 text-secondary hover:bg-secondary/10 
-                      hover:border-secondary/50 transition-all duration-300"
-                    >
-                      Learn More
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* Trust Badge */}
-              <div className="flex justify-center px-4">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full 
-                bg-background border border-muted-foreground/20 shadow-sm text-sm">
-                  <svg className="h-4 w-4 md:h-5 md:w-5 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-sm md:text-base font-medium">Free Analysis • No Credit Card Required</span>
-                </div>
-              </div>
+              {/* CTA Buttons - With Animation */}
+              <motion.div 
+                className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                <Link to="/signup">
+                  <Button 
+                    size="lg" 
+                    className="w-full sm:w-auto px-6 py-6 text-lg bg-primary text-white hover:bg-primary/90 shadow-md transition-all duration-300 hover:shadow-lg"
+                  >
+                    Get Started Free
+                  </Button>
+                </Link>
+              </motion.div>
             </div>
           </div>
         </section>
@@ -115,7 +103,15 @@ const Index = () => {
         {/* Feature Cards Grid */}
         <section className="py-12 md:py-20">
           <div className="container px-4 md:px-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+              <Link to="/profile-analysis">
+                <FeatureCard
+                  icon={Camera}
+                  title="Profile Analysis"
+                  description="Get expert AI feedback on your photos to make your profile more attractive."
+                />
+              </Link>
+              
               <Link to="/build-profile">
                 <FeatureCard
                   icon={Heart}
@@ -188,113 +184,201 @@ const Index = () => {
                   User Rating
                 </div>
               </div>
-            </div>
           </div>
-        </section>
-
-        {/* Feature Section */}
+        </div>
+      </section>
+      
+      {/* Feature Section */}
         <section className="py-20 mt-10 bg-gradient-to-b from-background to-gray-50/50">
           <div className="container max-w-6xl">
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">How It Works</h2>
+              <h2 className="text-[32px] md:text-[36px] font-bold mb-4">How It Works</h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 DateSpark uses advanced AI to help you stand out in the dating world.
               </p>
             </div>
-
+            
             <div className="grid gap-6">
               <ProcessCard
-                icon={Camera}
-                title="Upload Your Profile"
-                description="Share your dating profile photos and get personalized feedback on how to improve them."
+              icon={Camera}
+              title="Upload Your Profile"
+              description="Share your dating profile photos and get personalized feedback on how to improve them."
                 iconPosition="left"
-              />
+            />
               
               <ProcessCard
                 icon={PenLine}
-                title="Build Your Bio"
-                description="Create a witty, unique dating profile bio that captures your personality in seconds."
+              title="Build Your Bio"
+              description="Create a witty, unique dating profile bio that captures your personality in seconds."
                 iconPosition="right"
-              />
+            />
               
               <ProcessCard
-                icon={Zap}
-                title="Punch Up Your Prompts"
-                description="Generate quirky, funny one-liners for your dating app prompts that will make you stand out."
+              icon={Zap}
+              title="Punch Up Your Prompts"
+              description="Generate quirky, funny one-liners for your dating app prompts that will make you stand out."
                 iconPosition="left"
-              />
+            />
               
               <ProcessCard
-                icon={Sparkles}
-                title="AI Analysis"
-                description="Our AI analyzes your photos and provides specific suggestions to make your profile more attractive."
+              icon={Sparkles}
+              title="AI Analysis"
+              description="Our AI analyzes your photos and provides specific suggestions to make your profile more attractive."
                 iconPosition="right"
-              />
+            />
               
               <ProcessCard
                 icon={MessageSquare}
-                title="Get Conversation Starters"
-                description="Receive tailored conversation starters based on their interests and profile content."
+              title="Get Conversation Starters"
+              description="Receive tailored conversation starters based on their interests and profile content."
                 iconPosition="left"
-              />
+            />
               
               <ProcessCard
-                icon={Heart}
-                title="Find Better Matches"
-                description="With an optimized profile, you'll attract more quality matches and meaningful connections."
+              icon={Heart}
+              title="Find Better Matches"
+              description="With an optimized profile, you'll attract more quality matches and meaningful connections."
                 iconPosition="right"
-              />
-            </div>
+            />
           </div>
-        </section>
-        
-        {/* Testimonials */}
-        <section className="py-20 mt-10 bg-[#FDF8F3]">
+        </div>
+      </section>
+      
+      {/* Testimonials */}
+        <section className="py-20 mt-10 bg-[#F8F0EA] border-t border-b border-amber-100/30">
           <div className="container">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Success Stories</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Hear from people who've improved their dating lives with DateSpark.
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <TestimonialCard 
-                quote="I was struggling to get matches until I used the profile analysis. The suggestions were spot on and my matches increased by 300%!"
-                author="Alex, 28"
-                image="https://source.unsplash.com/random/100x100/?portrait,man"
-              />
-              <TestimonialCard 
-                quote="The bio generator created a profile that actually sounds like me! It helped me showcase my personality in a way I couldn't do myself."
-                author="Emma, 24"
-                image="https://source.unsplash.com/random/100x100/?portrait,woman"
-              />
-              <TestimonialCard 
-                quote="The prompt punch-up feature gave me hilarious responses that got people messaging me first. Game changer!"
-                author="Michael, 32"
-                image="https://source.unsplash.com/random/100x100/?portrait,man2"
-              />
-            </div>
-          </div>
-        </section>
+        <div className="text-center mb-16">
+          <h2 className="text-[32px] md:text-[36px] font-bold mb-6">Success Stories</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Hear from people who've improved their dating lives with DateSpark.
+          </p>
+        </div>
         
-        {/* Updated Section */}
-        <section className="py-12 md:py-20 bg-gray-50 border-t border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <TestimonialCard 
+              quote="I was struggling to get matches until I used the profile analysis. The suggestions were **spot on** and my matches **increased by 300%**!"
+              author="Alex" 
+              location="New York, USA"
+              image="https://source.unsplash.com/random/100x100/?portrait,man"
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <TestimonialCard 
+              quote="The bio generator created a profile that **actually sounds like me**! It helped me showcase my **personality** in a way I couldn't do myself."
+              author="Priya"
+              location="Mumbai, India"
+              image="https://source.unsplash.com/random/100x100/?portrait,woman,indian"
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+          >
+            <TestimonialCard 
+              quote="The prompt punch-up feature gave me **hilarious responses** that got people **messaging me first**. Absolute game changer!"
+              author="Rahul"
+              location="Bangalore, India"
+              image="https://source.unsplash.com/random/100x100/?portrait,man,indian"
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <TestimonialCard 
+              quote="The conversation starters helped me break the ice with meaningful messages. Now I'm dating someone I **connected with instantly**!"
+              author="Maria"
+              location="Madrid, Spain"
+              image="https://source.unsplash.com/random/100x100/?portrait,woman,spanish"
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            <TestimonialCard 
+              quote="As someone over 50, I was skeptical about dating apps. DateSpark helped me create a profile that attracts people who **appreciate my life experience**."
+              author="James"
+              location="Toronto, Canada"
+              image="https://source.unsplash.com/random/100x100/?portrait,man,older"
+            />
+          </motion.div>
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+          >
+            <TestimonialCard 
+              quote="The profile analysis gave me confidence in my photos. I'm getting **quality matches** with people who are interested in the **real me**."
+              author="Zoe"
+              location="Sydney, Australia"
+              image="https://source.unsplash.com/random/100x100/?portrait,woman"
+            />
+          </motion.div>
+        </div>
+      </div>
+    </section>
+      
+        {/* Updated Section - Simplified with only Sign Up */}
+        <section className="py-16 md:py-24 bg-background border-t">
           <div className="container px-4 md:px-6 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Start Your Journey to Better Matches
-            </h2>
-            <p className="text-lg text-muted-foreground mb-8">
-              Join thousands of people who are finding better matches and making meaningful connections with DateSpark.
-            </p>
-            <Link to="/get-started" className="block">
-              <Button
-                size="lg"
-                className="bg-red-600 text-white hover:bg-red-700 transition-all duration-300"
-              >
-                Get Started
-              </Button>
-            </Link>
+            <motion.h2 
+              className="text-[32px] md:text-[36px] font-bold mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              Ready to Transform Your Dating Life?
+            </motion.h2>
+            <motion.p 
+              className="text-lg text-muted-foreground mb-10 max-w-3xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              Start attracting better matches and meaningful connections today.
+            </motion.p>
+            <motion.div 
+              className="flex justify-center"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+            >
+              <Link to="/signup">
+                <Button 
+                  size="lg"
+                  className="px-8 py-6 text-lg font-medium bg-primary text-white hover:bg-primary/90 shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105"
+                >
+                  Sign Up
+                </Button>
+              </Link>
+            </motion.div>
           </div>
         </section>
       </main>

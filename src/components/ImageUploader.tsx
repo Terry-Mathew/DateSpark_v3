@@ -1,30 +1,24 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Upload, X, Image as ImageIcon, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { Upload, X, ImageIcon, Plus } from "lucide-react";
 
 interface ImageUploaderProps {
   onImageUpload: (files: File[]) => void;
-  title: string;
-  description: string;
-  acceptedTypes?: string;
-  maxSizeMB?: number;
-  multiple?: boolean;
+  maxFiles?: number;
+  title?: string;
+  description?: string;
 }
 
 const ImageUploader = ({
   onImageUpload,
-  title,
-  description,
-  acceptedTypes = "image/jpeg, image/png, image/jpg",
-  maxSizeMB = 5,
-  multiple = true
+  maxFiles = 5,
+  title = "Upload Images",
+  description = "Drag & drop images here or click to browse"
 }: ImageUploaderProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  const maxSizeBytes = maxSizeMB * 1024 * 1024;
   
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -39,166 +33,161 @@ const ImageUploader = ({
     e.preventDefault();
     setIsDragging(false);
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const filesArray = multiple ? Array.from(files) : [files[0]];
-      validateAndUpload(filesArray);
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles.length > 0) {
+      handleFiles(Array.from(droppedFiles));
     }
   };
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      const filesArray = multiple ? Array.from(files) : [files[0]];
-      validateAndUpload(filesArray);
+    const selectedFiles = e.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      handleFiles(Array.from(selectedFiles));
     }
   };
   
-  const validateAndUpload = (files: File[]) => {
-    const validFiles: File[] = [];
-    const newPreviews: string[] = [...previews];
+  const handleFiles = (newFiles: File[]) => {
+    // Filter for image files
+    const imageFiles = newFiles.filter(file => 
+      file.type.startsWith('image/')
+    );
     
-    // Process each file
-    files.forEach(file => {
-      // Get file extension from name as backup
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-      const isValidType = 
-        file.type.includes('jpeg') || 
-        file.type.includes('jpg') || 
-        file.type.includes('png') || 
-        fileExt === 'jpg' || 
-        fileExt === 'jpeg' || 
-        fileExt === 'png';
-      
-      // Check valid file types with more robust matching
-      if (!isValidType) {
-        toast.error(`Invalid file type: ${file.name}. Please upload jpeg, png, or jpg`);
-        return;
-      }
-      
-      // Check file size
-      if (file.size > maxSizeBytes) {
-        toast.error(`File ${file.name} is too large. Maximum size is ${maxSizeMB}MB`);
-        return;
-      }
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          newPreviews.push(e.target.result as string);
-          setPreviews(newPreviews);
-        }
-      };
-      reader.readAsDataURL(file);
-      
-      validFiles.push(file);
-    });
+    // Limit to max files
+    const combinedFiles = [...files, ...imageFiles].slice(0, maxFiles);
+    setFiles(combinedFiles);
     
-    // Call the upload handler if we have valid files
-    if (validFiles.length > 0) {
-      onImageUpload(validFiles);
+    // Create previews
+    const newPreviews = combinedFiles.map(file => URL.createObjectURL(file));
+    
+    // Revoke old URLs to prevent memory leaks
+    if (previews.length > 0) {
+      previews.forEach(url => URL.revokeObjectURL(url));
     }
-  };
-  
-  const clearImage = (index: number) => {
-    const newPreviews = [...previews];
-    newPreviews.splice(index, 1);
+    
     setPreviews(newPreviews);
-    
-    // Reset input if all images are cleared
-    if (newPreviews.length === 0 && inputRef.current) {
-      inputRef.current.value = '';
-    }
+    onImageUpload(combinedFiles);
   };
   
-  const clearAllImages = () => {
+  const removeFile = (index: number) => {
+    // Revoke the URL
+    URL.revokeObjectURL(previews[index]);
+    
+    // Remove the file and preview
+    const updatedFiles = [...files];
+    updatedFiles.splice(index, 1);
+    
+    const updatedPreviews = [...previews];
+    updatedPreviews.splice(index, 1);
+    
+    setFiles(updatedFiles);
+    setPreviews(updatedPreviews);
+    onImageUpload(updatedFiles);
+  };
+  
+  const clearAll = () => {
+    // Revoke all URLs
+    previews.forEach(url => URL.revokeObjectURL(url));
     setPreviews([]);
+    setFiles([]);
     if (inputRef.current) {
-      inputRef.current.value = '';
+      inputRef.current.value = "";
     }
+    onImageUpload([]);
   };
   
   return (
     <div className="w-full">
-      {previews.length > 0 ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {previews.map((preview, index) => (
-              <div key={index} className="relative rounded-xl overflow-hidden border border-border">
-                <img
-                  src={preview}
-                  alt={`Preview ${index + 1}`}
-                  className="w-full h-48 object-cover bg-black/5"
-                />
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="absolute top-2 right-2"
-                  onClick={() => clearImage(index)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            
-            {/* Add more images button */}
-            <div
-              className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-4 cursor-pointer h-48 hover:border-primary/50 hover:bg-muted/50"
-              onClick={() => inputRef.current?.click()}
-            >
-              <Plus className="h-8 w-8 text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Add more photos</p>
-            </div>
-          </div>
-          
-          {/* Clear all button */}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={clearAllImages}
-            className="mt-2"
-          >
-            <X className="mr-2 h-4 w-4" />
-            Clear All
-          </Button>
-        </div>
-      ) : (
+      <div className="mb-4">
         <div
-          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-            isDragging
-              ? "border-primary bg-primary/10"
-              : "border-border hover:border-primary/50 hover:bg-muted/50"
-          }`}
+          className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300 
+            ${isDragging ? 'border-primary bg-primary/10' : 'hover:border-primary/50 hover:bg-muted/20'} 
+            ${files.length >= maxFiles ? 'opacity-50 pointer-events-none' : ''}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
         >
-          <div className="flex flex-col items-center gap-2">
-            <div className="rounded-full bg-muted p-3">
-              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+          <div className="flex flex-col items-center">
+            <div className="mb-4 p-3 bg-primary/10 rounded-full animate-pulse">
+              <Upload className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-lg font-medium">{title}</h3>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-              {description}
-            </p>
-            <Button className="mt-4" size="sm" variant="secondary">
-              <Upload className="mr-2 h-4 w-4" />
-              {multiple ? "Choose Files" : "Choose File"}
-            </Button>
-            <p className="text-xs text-muted-foreground mt-2">
-              jpeg, png, jpg up to {maxSizeMB}MB
+            <h3 className="font-medium mb-1">{title}</h3>
+            <p className="text-sm text-muted-foreground mb-3">{description}</p>
+            <p className="text-xs text-muted-foreground">
+              {files.length === 0 
+                ? `Maximum ${maxFiles} images, up to 5MB each` 
+                : `${files.length} of ${maxFiles} images selected`}
             </p>
           </div>
-          <input
-            type="file"
-            ref={inputRef}
-            onChange={handleFileChange}
-            accept="image/jpeg, image/png, image/jpg"
-            multiple={multiple}
-            className="hidden"
-          />
+        </div>
+        <input
+          type="file"
+          ref={inputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          multiple
+          className="hidden"
+        />
+      </div>
+      
+      {/* Preview Section */}
+      {previews.length > 0 && (
+        <div className="mt-6 animate-fade-in">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-medium text-sm">Selected Images</h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={clearAll}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Clear All
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {previews.map((preview, index) => (
+              <div 
+                key={index} 
+                className="relative aspect-square group transition-all duration-300 hover:shadow-md rounded-lg overflow-hidden border animate-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <img 
+                  src={preview} 
+                  alt={`Preview ${index + 1}`}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFile(index);
+                    }}
+                    className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <div className="bg-primary text-white px-2 py-1 rounded text-xs font-medium opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
+                    {files[index].name.length > 20 
+                      ? files[index].name.substring(0, 20) + "..." 
+                      : files[index].name}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {/* Add more button if not at max */}
+            {files.length < maxFiles && (
+              <button 
+                onClick={() => inputRef.current?.click()}
+                className="aspect-square border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary/70 animate-fade-in"
+              >
+                <div className="flex flex-col items-center p-4">
+                  <ImageIcon className="h-6 w-6 mb-2" />
+                  <span className="text-xs font-medium">Add More</span>
+                </div>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -3,6 +3,40 @@ const OpenAI = require('openai');
 const router = express.Router();
 const firebase = require('../firebase.cjs');
 const db = firebase.firestore;
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const admin = require('firebase-admin');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadsDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    // Generate a unique filename with original extension
+    const fileExt = path.extname(file.originalname);
+    const fileName = `${uuidv4()}${fileExt}`;
+    cb(null, fileName);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: function (req, file, cb) {
+    // Accept only image files
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // Initialize OpenAI
 const openai = new OpenAI({
@@ -27,101 +61,164 @@ const verifyAuth = async (req, res, next) => {
 };
 
 /**
- * Analyze dating profile photos and bio
+ * Upload photo endpoint
+ * This endpoint accepts image files and returns URLs that can be used for analysis
  */
-router.post('/analyze-profile', verifyAuth, async (req, res) => {
-  const { images, bio, goals, preferences } = req.body;
+router.post('/upload', verifyAuth, upload.single('file'), async (req, res) => {
   const userId = req.user.uid;
   
-  if (!images || !images.length) {
-    return res.status(400).json({ error: 'At least one image is required' });
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
   }
   
   try {
-    // Prepare the prompt with all the available information
-    let prompt = `Analyze this dating profile:\n\nPhotos: ${images.length} photos provided`;
+    // Generate the public URL for the file
+    const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 5002}`;
+    const fileUrl = `${baseUrl}/uploads/${req.file.filename}`;
     
-    if (bio) {
-      prompt += `\n\nBio: ${bio}`;
+    // Store the file info in Firestore
+    await db.collection('userFiles').add({
+      userId,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      url: fileUrl,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      createdAt: firebase.FieldValue.serverTimestamp()
+    });
+    
+    // Return the file URL to the client
+    res.status(200).json({
+      success: true,
+      url: fileUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ error: 'Error uploading file' });
+  }
+});
+
+/**
+ * Analyze dating profile photos and bio
+ */
+router.post('/analyze-profile', verifyAuth, async (req, res) => {
+  try {
+    const { photos, bio, goals, preferences } = req.body;
+    
+    // Validate request
+    if (!photos || !Array.isArray(photos) || photos.length === 0) {
+      return res.status(400).json({ error: 'No photos provided for analysis' });
     }
     
-    if (goals) {
-      prompt += `\n\nRelationship Goals: ${goals}`;
-    }
+    // Get user info for personalization
+    const uid = req.user.uid;
     
-    if (preferences) {
-      prompt += `\n\nPreferences: ${preferences}`;
-    }
+    console.log(`Processing profile analysis for user ${uid} with ${photos.length} photos`);
     
-    prompt += `\n\nProvide a detailed analysis with the following sections:
-    1. Overall Score (1-10)
-    2. Strengths (3-5 bullet points)
-    3. Areas for Improvement (3-5 bullet points)
-    4. Specific Suggestions for Improvement
-    5. Detailed Photo Analysis
-    6. Bio Feedback (if provided)
+    // Prepare the prompt for OpenAI
+    let prompt = `Analyze these ${photos.length} dating profile photos`;
     
-    Format the response as JSON with the following structure:
-    {
-      "overallScore": number,
-      "strengths": string[],
-      "weaknesses": string[],
-      "improvementSuggestions": string[],
-      "detailedAnalysis": {
-        "photoQuality": {
-          "score": number,
-          "feedback": string
-        },
-        "diversity": {
-          "score": number,
-          "feedback": string
-        },
-        "impression": {
-          "score": number,
-          "feedback": string
-        },
-        "bioFeedback": {
-          "score": number,
-          "feedback": string
-        }
+    if (bio) prompt += ` and the following bio: "${bio}"`;
+    if (goals) prompt += `. The user's dating goals are: "${goals}"`;
+    if (preferences) prompt += `. Their preferences are: "${preferences}"`;
+    
+    prompt += `\n\nFor each photo, provide:
+1. A brief description of what's in the photo
+2. A verdict on whether it's a good dating profile photo
+3. A specific suggestion to improve it
+
+Then, provide:
+1. An overall first impression score (1-10)
+2. Whether you would "swipe right" or "swipe left" on this profile and why
+3. Key strengths of the profile
+4. Specific improvement suggestions
+
+Format the response as a JSON object with these fields:
+{
+  "photoAnalysis": [
+    { "description": "", "verdict": "", "suggestion": "" },
+    ...
+  ],
+  "overallScore": 7.5,
+  "firstImpression": {
+    "would_swipe": "right | left",
+    "reason": ""
+  },
+  "strengths": ["", "", ""],
+  "improvements": ["", "", ""]
+}`;
+
+    // Call OpenAI for analysis
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+    
+    const messages = [
+      {
+        role: "system",
+        content: "You are a dating profile consultant who helps people improve their dating profiles. You analyze profile photos and bios, then provide constructive feedback and suggestions."
+      },
+      {
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          ...photos.map(photo => ({ type: "image_url", image_url: { url: photo } }))
+        ]
       }
-    }`;
+    ];
+    
+    console.log("Sending analysis request to OpenAI...");
     
     const completion = await openai.chat.completions.create({
       model: "gpt-4-vision-preview",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            ...images.map(imageUrl => ({
-              type: "image_url",
-              image_url: { url: imageUrl }
-            }))
-          ]
-        }
-      ],
-      response_format: { type: "json_object" },
-      max_tokens: 2000
+      messages: messages,
+      max_tokens: 1500
     });
     
-    const response = JSON.parse(completion.choices[0].message.content);
+    console.log("Received response from OpenAI");
     
-    // Store the analysis in Firestore
-    await db.collection('profileAnalyses').doc(userId).set({
-      userId,
-      analysis: response,
-      createdAt: firebase.FieldValue.serverTimestamp(),
-      images,
-      bio,
-      goals,
-      preferences
+    // Parse the response
+    let analysisResult;
+    try {
+      const responseText = completion.choices[0].message.content;
+      
+      // Try to extract JSON from the response text
+      const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/) || 
+                        responseText.match(/{[\s\S]*}/);
+                        
+      if (jsonMatch) {
+        const jsonStr = jsonMatch[1] || jsonMatch[0];
+        analysisResult = JSON.parse(jsonStr);
+      } else {
+        analysisResult = { error: "Could not parse AI response", rawResponse: responseText };
+      }
+    } catch (parseError) {
+      console.error("Error parsing OpenAI response:", parseError);
+      analysisResult = { 
+        error: "Error parsing analysis result", 
+        message: completion.choices[0].message.content 
+      };
+    }
+    
+    // Store the result in Firestore
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    const analysisRef = await db.collection('profile_analyses').add({
+      userId: uid,
+      result: analysisResult,
+      timestamp,
+      photoCount: photos.length
     });
     
-    res.json(response);
+    // Return the analysis result
+    return res.json({ 
+      id: analysisRef.id,
+      ...analysisResult
+    });
+    
   } catch (error) {
-    console.error('Profile analysis error:', error);
-    res.status(500).json({ error: 'Error analyzing profile' });
+    console.error('Error analyzing profile:', error);
+    return res.status(500).json({ error: 'Failed to analyze profile', message: error.message });
   }
 });
 

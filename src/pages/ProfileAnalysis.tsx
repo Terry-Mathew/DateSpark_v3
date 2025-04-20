@@ -11,80 +11,6 @@ import { ArrowUpRight, Camera, FileText, Clock, LightbulbIcon, Info } from "luci
 import axios from "axios";
 import { auth } from "@/firebase";
 
-// Example photos from Unsplash
-const examplePhotos = [
-  {
-    url: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80",
-    title: "Fun outdoor activity",
-    description: "Show yourself enjoying a hobby or sport you love"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1540331547168-8b63109225b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80",
-    title: "Group photo with friends",
-    description: "Social photos show you're fun to be around"
-  },
-  {
-    url: "https://images.unsplash.com/photo-1511988617509-a57c8a288659?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80",
-    title: "Laughing/smiling portrait",
-    description: "Natural, candid shots show your authentic personality"
-  }
-];
-
-// Simulated AI analysis results - only used as a fallback
-const sampleAnalysis = {
-  title: "Your Profile Analysis",
-  score: 7.5,
-  firstImpression: {
-    would_swipe: "right" as "right" | "left", // Fixed type
-    reason: "Your profile stands out with an authentic smile and good lighting, though the background is slightly distracting."
-  },
-  photoFeedback: [
-    {
-      type: "positive" as "positive" | "improvement", // Fixed type
-      text: "Your smile is authentic and creates a warm, approachable vibe."
-    },
-    {
-      type: "positive" as "positive" | "improvement", // Fixed type
-      text: "The lighting in your photo is excellent, highlighting your features well."
-    },
-    {
-      type: "improvement" as "positive" | "improvement", // Fixed type
-      text: "The background is cluttered, which can be distracting. Try a cleaner setting."
-    },
-    {
-      type: "improvement" as "positive" | "improvement", // Fixed type
-      text: "Your photo appears to be a selfie. Consider adding photos taken by others to show more natural poses."
-    }
-  ],
-  bioFeedback: [
-    {
-      type: "positive" as "positive" | "improvement", // Fixed type
-      text: "Your bio has a good balance of humor and sincerity."
-    },
-    {
-      type: "improvement" as "positive" | "improvement", // Fixed type
-      text: "The phrase 'work hard, play hard' is overused in dating profiles. Try something more unique."
-    }
-  ],
-  improvementSuggestions: [
-    {
-      title: "Add a full-body photo",
-      description: "This provides a more complete impression for potential matches.",
-      actionText: "Upload new photo"
-    },
-    {
-      title: "Show yourself engaged in a hobby",
-      description: "Photos of you doing activities you enjoy showcase your personality and interests.",
-      actionText: "Upload activity photo"
-    },
-    {
-      title: "Revise your bio to remove clichés",
-      description: "Replace common phrases with more specific and unique descriptions.",
-      actionText: "Edit bio now"
-    }
-  ]
-};
-
 const ProfileAnalysis = () => {
   // Handle multiple images
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -106,46 +32,81 @@ const ProfileAnalysis = () => {
 
     setIsAnalyzing(true);
     setAnalysisResults([]);
-    const results = [];
 
     try {
-      for (let i = 0; i < selectedImages.length; i++) {
-        const formData = new FormData();
-        formData.append("photos", selectedImages[i]);
-
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || "http://localhost:5002"}/api/analyze-profile`,
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-
-        if (response.data) {
-          results.push({
-            ...response.data,
-            imageSrc: URL.createObjectURL(selectedImages[i]),
-            imageFile: selectedImages[i].name,
-          });
-        }
+      const results = [];
+      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5002";
+      
+      // Get authentication token
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        throw new Error("You must be logged in to analyze your profile");
       }
 
-      setAnalysisResults(results);
+      // First, upload all images and get their URLs
+      const imageUrls = [];
+      for (let i = 0; i < selectedImages.length; i++) {
+        const formData = new FormData();
+        formData.append("file", selectedImages[i]);
+        
+        try {
+          // Upload the image to get a URL
+          const uploadResponse = await axios.post(
+            `${baseUrl}/api/upload`,
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+                "Authorization": `Bearer ${idToken}`
+              },
+            }
+          );
+          
+          if (uploadResponse.data && uploadResponse.data.url) {
+            imageUrls.push(uploadResponse.data.url);
+          }
+        } catch (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          toast.error(`Failed to upload image ${selectedImages[i].name}`);
+        }
+      }
+      
+      if (imageUrls.length === 0) {
+        throw new Error("Could not upload any images. Please try again.");
+      }
+      
+      // Now analyze the profile with the image URLs
+      const analysisResponse = await axios.post(
+        `${baseUrl}/api/analyze-profile`,
+        { 
+          photos: imageUrls,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`
+          },
+        }
+      );
+
+      if (analysisResponse.data) {
+        // Create a result that includes both the analysis data and references to the local images
+        const result = {
+          ...analysisResponse.data,
+          photoUrls: imageUrls,
+          localImages: selectedImages.map(img => ({
+            url: URL.createObjectURL(img),
+            name: img.name
+          }))
+        };
+        
+        results.push(result);
+        setAnalysisResults(results);
+      }
     } catch (error) {
       console.error("Error analyzing profile:", error);
       toast.error("Failed to analyze your photos. Please try again later.");
-      
-      // Fallback to sample results if API fails
-      const sampleResults = selectedImages.map((img, index) => ({
-        description: "Sample analysis result due to API error.",
-        verdict: "Needs Improvement",
-        suggestion: "Please try again later when our service is back online.",
-        imageSrc: URL.createObjectURL(img),
-        imageFile: img.name,
-      }));
-      setAnalysisResults(sampleResults);
+      setAnalysisResults([]);
     } finally {
       setIsAnalyzing(false);
     }
@@ -212,26 +173,6 @@ const ProfileAnalysis = () => {
                   </Button>
                 </CardContent>
               </Card>
-              
-              {/* Example Photos Section */}
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-3">Example Good Profile Photos:</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {examplePhotos.map((photo, index) => (
-                    <div key={index} className="rounded-lg border overflow-hidden">
-                      <img 
-                        src={photo.url} 
-                        alt={photo.title} 
-                        className="w-full aspect-square object-cover"
-                      />
-                      <div className="p-2">
-                        <h4 className="text-xs font-medium">{photo.title}</h4>
-                        <p className="text-xs text-muted-foreground">{photo.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
               
               <div className="mt-6 text-sm text-muted-foreground">
                 <p className="font-medium mb-2">

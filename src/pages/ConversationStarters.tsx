@@ -70,7 +70,7 @@ const ConversationStarters = () => {
       formData.append("profileImage", file);
       
       // Get authentication token if the user is logged in
-      let headers = {
+      const headers = {
         'Content-Type': 'multipart/form-data'
       };
       

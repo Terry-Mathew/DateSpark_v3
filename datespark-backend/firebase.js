@@ -19,17 +19,25 @@ try {
   throw error;
 }
 
-// Initialize Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'datespark-bb39a.appspot.com'
-});
+// Check if Firebase is already initialized
+let db, auth, storage;
 
-console.log(`Firebase Admin initialized for ${process.env.NODE_ENV} environment`);
-console.log(`Using Firestore project: ${serviceAccount.project_id}`);
+if (!admin.apps.length) {
+  // Initialize Firebase Admin only if not already initialized
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || 'datespark-bb39a.appspot.com'
+  });
 
-const db = admin.firestore();
-const auth = admin.auth();
-const storage = admin.storage();
+  console.log(`Firebase Admin initialized for ${process.env.NODE_ENV} environment`);
+  console.log(`Using Firestore project: ${serviceAccount.project_id}`);
+} else {
+  console.log('Firebase Admin SDK already initialized, reusing existing instance');
+}
+
+// Get services from the default app
+db = admin.firestore();
+auth = admin.auth();
+storage = admin.storage();
 
 module.exports = { admin, db, auth, storage };

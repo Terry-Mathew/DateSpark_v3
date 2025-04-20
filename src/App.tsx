@@ -10,6 +10,10 @@ import NotFound from "./pages/NotFound";
 import BuildProfile from "./pages/BuildProfile";
 import PromptPunchUp from "./pages/PromptPunchUp";
 import Pricing from "./pages/Pricing";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
+import ForgotPassword from "./pages/ForgotPassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import FeedbackWidget from "@/components/FeedbackWidget";
 
 const queryClient = new QueryClient();
@@ -27,6 +31,10 @@ const App = () => (
           <Route path="/build-profile" element={<BuildProfile />} />
           <Route path="/prompt-punch-up" element={<PromptPunchUp />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <FeedbackWidget />

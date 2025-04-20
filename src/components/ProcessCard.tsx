@@ -1,10 +1,12 @@
+import { LucideIcon } from "lucide-react";
+
 const ProcessCard = ({ 
   icon: Icon, 
   title, 
   description, 
   iconPosition = 'left' 
 }: { 
-  icon: any;
+  icon: LucideIcon;
   title: string;
   description: string;
   iconPosition?: 'left' | 'right';
@@ -25,4 +27,6 @@ const ProcessCard = ({
       </div>
     </div>
   </div>
-); 
+);
+
+export default ProcessCard; 
