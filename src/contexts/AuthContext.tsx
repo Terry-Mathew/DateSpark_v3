@@ -1,11 +1,25 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  sendEmailVerification,
+  applyActionCode,
+  sendPasswordResetEmail,
+  User as FirebaseUser,
+  onAuthStateChanged,
+  updateProfile
+} from "firebase/auth";
+import { auth } from "@/firebase";
 
 interface User {
   id: string;
   email: string;
   name: string;
   isPremium: boolean;
+  emailVerified?: boolean;
 }
 
 interface AuthContextType {
@@ -14,6 +28,8 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  verifyEmail: (code: string) => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -24,62 +40,134 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for stored auth token
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // In a real app, validate token with backend
-      const storedUser = JSON.parse(localStorage.getItem('user') || 'null');
-      setUser(storedUser);
-    }
-    setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setLoading(true);
+      if (firebaseUser) {
+        // Create our app user object
+        const appUser: User = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || '',
+          isPremium: false, // This should be fetched from Firestore or your backend
+          emailVerified: firebaseUser.emailVerified
+        };
+        setUser(appUser);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      // In a real app, make API call to authenticate
-      // This is a mock implementation
-      const mockUser = {
-        id: '1',
-        email,
-        name: email.split('@')[0],
-        isPremium: false,
-      };
-      localStorage.setItem('auth_token', 'mock_token');
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      setUser(mockUser);
+      setLoading(true);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      
+      // Get token for API calls
+      const token = await firebaseUser.getIdToken();
+      localStorage.setItem('auth_token', token);
+      
       navigate('/');
     } catch (error) {
-      throw new Error('Authentication failed');
+      console.error("Sign in error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      // In a real app, make API call to register
-      const mockUser = {
-        id: '1',
-        email,
-        name,
-        isPremium: false,
-      };
-      localStorage.setItem('auth_token', 'mock_token');
-      localStorage.setItem('user', JSON.stringify(mockUser));
-      setUser(mockUser);
-      navigate('/');
+      setLoading(true);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+      
+      // Update profile with name
+      await updateProfile(firebaseUser, {
+        displayName: name
+      });
+      
+      // Send verification email
+      await sendEmailVerification(firebaseUser);
+      
+      // Get token for API calls
+      const token = await firebaseUser.getIdToken();
+      localStorage.setItem('auth_token', token);
+      
+      navigate('/email-verification');
     } catch (error) {
-      throw new Error('Registration failed');
+      console.error("Sign up error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    setUser(null);
-    navigate('/');
+    try {
+      await firebaseSignOut(auth);
+      localStorage.removeItem('auth_token');
+      navigate('/');
+    } catch (error) {
+      console.error("Sign out error:", error);
+      throw error;
+    }
+  };
+
+  const verifyEmail = async (code: string) => {
+    try {
+      setLoading(true);
+      await applyActionCode(auth, code);
+      
+      // Refresh the current user
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        
+        // Update local user state
+        const updatedUser = { ...user, emailVerified: auth.currentUser.emailVerified };
+        setUser(updatedUser);
+      }
+    } catch (error) {
+      console.error("Email verification error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    try {
+      setLoading(true);
+      if (auth.currentUser) {
+        await sendEmailVerification(auth.currentUser);
+      } else {
+        throw new Error("No user is currently signed in");
+      }
+    } catch (error) {
+      console.error("Resend verification email error:", error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        loading, 
+        signIn, 
+        signUp, 
+        signOut,
+        verifyEmail,
+        resendVerificationEmail 
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

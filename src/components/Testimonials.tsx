@@ -2,8 +2,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Quote } from "lucide-react";
 import ScrollFadeIn from "@/components/ScrollFadeIn";
-import { LazyLoad } from "@/components/ui/lazy-load";
-import { OptimizedImage } from "@/components/ui/optimized-image";
+import LazyLoad from "@/components/ui/lazy-load";
+import OptimizedImage from "@/components/ui/optimized-image";
 
 const testimonials = [
   {

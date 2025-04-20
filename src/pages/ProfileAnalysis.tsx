@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +7,30 @@ import ProfileAnalysisResult from "@/components/ProfileAnalysisResult";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
-import { ArrowUpRight, Camera, FileText, Clock } from "lucide-react";
+import { ArrowUpRight, Camera, FileText, Clock, LightbulbIcon, Info } from "lucide-react";
+import axios from "axios";
+import { auth } from "@/firebase";
 
-// Simulated AI analysis results - in a real app, this would come from an API
+// Example photos from Unsplash
+const examplePhotos = [
+  {
+    url: "https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80",
+    title: "Fun outdoor activity",
+    description: "Show yourself enjoying a hobby or sport you love"
+  },
+  {
+    url: "https://images.unsplash.com/photo-1540331547168-8b63109225b7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80",
+    title: "Group photo with friends",
+    description: "Social photos show you're fun to be around"
+  },
+  {
+    url: "https://images.unsplash.com/photo-1511988617509-a57c8a288659?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80",
+    title: "Laughing/smiling portrait",
+    description: "Natural, candid shots show your authentic personality"
+  }
+];
+
+// Simulated AI analysis results - only used as a fallback
 const sampleAnalysis = {
   title: "Your Profile Analysis",
   score: 7.5,
@@ -66,29 +86,69 @@ const sampleAnalysis = {
 };
 
 const ProfileAnalysis = () => {
+  // Handle multiple images
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [results, setResults] = useState<typeof sampleAnalysis | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<any[]>([]);
   
-  const handleImageUpload = (uploadedFile: File) => {
-    setFile(uploadedFile);
-    setResults(null); // Reset results when a new image is uploaded
+  // Handle image upload from ImageUploader
+  const handleImageUpload = (uploadedFiles: File[]) => {
+    setSelectedImages(uploadedFiles);
+    setAnalysisResults([]);
   };
   
-  const analyzeProfile = () => {
-    if (!file) {
-      toast.error("Please upload images of your dating profile");
+  // Analyze profile with multiple images
+  const analyzeProfile = async () => {
+    if (selectedImages.length === 0) {
+      toast.error("Please upload at least one photo to analyze");
       return;
     }
-    
+
     setIsAnalyzing(true);
-    
-    // Simulate API call with a timeout
-    setTimeout(() => {
-      setResults(sampleAnalysis);
+    setAnalysisResults([]);
+    const results = [];
+
+    try {
+      for (let i = 0; i < selectedImages.length; i++) {
+        const formData = new FormData();
+        formData.append("photos", selectedImages[i]);
+
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL || "http://localhost:5002"}/api/analyze-profile`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+
+        if (response.data) {
+          results.push({
+            ...response.data,
+            imageSrc: URL.createObjectURL(selectedImages[i]),
+            imageFile: selectedImages[i].name,
+          });
+        }
+      }
+
+      setAnalysisResults(results);
+    } catch (error) {
+      console.error("Error analyzing profile:", error);
+      toast.error("Failed to analyze your photos. Please try again later.");
+      
+      // Fallback to sample results if API fails
+      const sampleResults = selectedImages.map((img, index) => ({
+        description: "Sample analysis result due to API error.",
+        verdict: "Needs Improvement",
+        suggestion: "Please try again later when our service is back online.",
+        imageSrc: URL.createObjectURL(img),
+        imageFile: img.name,
+      }));
+      setAnalysisResults(sampleResults);
+    } finally {
       setIsAnalyzing(false);
-      toast.success("Analysis complete!");
-    }, 3000);
+    }
   };
   
   return (
@@ -101,7 +161,7 @@ const ProfileAnalysis = () => {
           <div className="text-center mb-12">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">Rate My Profile</h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Upload your dating profile photos and text to get AI-powered feedback on what's working and how to improve.
+              Upload your dating profile photos and get AI-powered feedback on what's working and how to improve.
             </p>
           </div>
           
@@ -125,15 +185,53 @@ const ProfileAnalysis = () => {
                     description="Drag and drop your profile screenshots here, or click to browse"
                   />
                   
+                  <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg mt-4">
+                    <div className="flex items-start gap-2">
+                      <LightbulbIcon className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-amber-700">
+                        <strong>Tip:</strong> Use clear, well-lit photos that show your personality. Authentic photos that represent who you are will attract better matches!
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-blue-700">
+                        <strong>Note:</strong> Please use authentic photos! Using smaller images (under 500KB) will help the app analyze your photos faster.
+                      </p>
+                    </div>
+                  </div>
+                  
                   <Button 
                     className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90" 
                     onClick={analyzeProfile} 
-                    disabled={!file || isAnalyzing}
+                    disabled={selectedImages.length === 0 || isAnalyzing}
                   >
                     {isAnalyzing ? "Analyzing..." : "Analyze My Profile"}
                   </Button>
                 </CardContent>
               </Card>
+              
+              {/* Example Photos Section */}
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-3">Example Good Profile Photos:</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {examplePhotos.map((photo, index) => (
+                    <div key={index} className="rounded-lg border overflow-hidden">
+                      <img 
+                        src={photo.url} 
+                        alt={photo.title} 
+                        className="w-full aspect-square object-cover"
+                      />
+                      <div className="p-2">
+                        <h4 className="text-xs font-medium">{photo.title}</h4>
+                        <p className="text-xs text-muted-foreground">{photo.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
               
               <div className="mt-6 text-sm text-muted-foreground">
                 <p className="font-medium mb-2">
@@ -168,13 +266,9 @@ const ProfileAnalysis = () => {
                 <ProfileAnalysisResult 
                   isLoading={true} 
                 />
-              ) : results ? (
+              ) : analysisResults.length > 0 ? (
                 <ProfileAnalysisResult 
-                  score={results.score}
-                  firstImpression={results.firstImpression}
-                  photoFeedback={results.photoFeedback}
-                  bioFeedback={results.bioFeedback}
-                  improvementSuggestions={results.improvementSuggestions}
+                  results={analysisResults}
                 />
               ) : (
                 <div className="h-full flex items-center justify-center bg-muted/30 rounded-xl border border-dashed p-8 text-center">

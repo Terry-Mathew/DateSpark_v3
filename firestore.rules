@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default: deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // User profiles
+    match /users/{userId} {
+      // Allow users to read and write only their own profiles
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Profile analyses
+    match /profileAnalyses/{analysisId} {
+      // Allow users to read and write only their own profile analyses
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Conversation starters
+    match /conversationStarters/{starterId} {
+      // Allow users to read and write only their own conversation starters
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Prompt punch-ups
+    match /promptResponses/{promptId} {
+      // Allow users to read and write only their own prompt punch-ups
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+} 

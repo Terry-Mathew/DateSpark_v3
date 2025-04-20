@@ -1,27 +1,12 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiresPremium?: boolean;
-}
-
-const ProtectedRoute = ({ children, requiresPremium = false }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/signin" />;
-  }
-
-  if (requiresPremium && !user.isPremium) {
-    return <Navigate to="/pricing" />;
-  }
+  if (loading) return <div>Loading...</div>;
+  
+  if (!user) return <Navigate to="/sign-in" />;
 
   return <>{children}</>;
 };
-
-export default ProtectedRoute; 

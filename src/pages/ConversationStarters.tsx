@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +8,9 @@ import ConversationStarter from "@/components/ConversationStarter";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
-import { MessageCircle, ThumbsUp, Lightbulb } from "lucide-react";
+import { MessageCircle, ThumbsUp, Lightbulb, Camera, Clock } from "lucide-react";
+import axios from "axios";
+import { auth } from "@/firebase";
 
 interface ProfileSummary {
   vibe: string;
@@ -55,7 +56,7 @@ const ConversationStarters = () => {
     setStarterMessages(null);
   };
   
-  const generateStarters = () => {
+  const generateStarters = async () => {
     if (!file) {
       toast.error("Please upload a screenshot of your crush's profile");
       return;
@@ -63,13 +64,78 @@ const ConversationStarters = () => {
     
     setIsGenerating(true);
     
-    // Simulate API call with a timeout
-    setTimeout(() => {
-      setProfileSummary(sampleProfileSummary);
-      setStarterMessages(sampleMessages);
+    try {
+      // Create form data for the file upload
+      const formData = new FormData();
+      formData.append("profileImage", file);
+      
+      // Get authentication token if the user is logged in
+      let headers = {
+        'Content-Type': 'multipart/form-data'
+      };
+      
+      if (auth.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      // Call the backend API to process the image
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL || "http://localhost:5002"}/api/process-image`,
+        formData,
+        { headers }
+      );
+      
+      // Process the response
+      if (response.data && response.data.success) {
+        // Create profile summary from results
+        const { results } = response.data;
+        
+        // Extract key points from the response for ProfileSummary
+        const summaryPoints = results.tips ? results.tips.slice(0, 3) : [];
+        
+        const summary: ProfileSummary = {
+          vibe: results.messages[0] || "No profile information detected",
+          swipeAppeal: 7, // Default value
+          standoutPoints: summaryPoints
+        };
+        
+        // Format messages into the expected structure
+        const messages: StarterMessage[] = [];
+        
+        if (results.messages && results.messages.length > 0) {
+          messages.push({
+            type: "playful",
+            message: results.messages[0]
+          });
+          
+          if (results.messages.length > 1) {
+            messages.push({
+              type: "sincere",
+              message: results.messages[1]
+            });
+          }
+          
+          if (results.messages.length > 2) {
+            messages.push({
+              type: "specific",
+              message: results.messages[2]
+            });
+          }
+        }
+        
+        setProfileSummary(summary);
+        setStarterMessages(messages);
+        toast.success("Conversation starters generated!");
+      } else {
+        throw new Error(response.data?.error || "Failed to generate starters");
+      }
+    } catch (error) {
+      console.error("Error generating starters:", error);
+      toast.error("Failed to generate conversation starters. Please try again.");
+    } finally {
       setIsGenerating(false);
-      toast.success("Conversation starters generated!");
-    }, 3000);
+    }
   };
   
   return (

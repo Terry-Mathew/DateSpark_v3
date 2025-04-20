@@ -9,29 +9,6 @@ import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import ScrollFadeIn from "@/components/ScrollFadeIn";
 
-const FeatureCard = ({ icon: Icon, title, description, className }: {
-  icon: any;
-  title: string;
-  description: string;
-  className?: string;
-}) => (
-  <div className={cn("group relative", className)}>
-    <div className="relative p-8 rounded-xl border border-muted-foreground/20 bg-background transition-all duration-300 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
-      {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      {/* Content */}
-      <div className="relative z-10">
-        <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-4">
-          <Icon className="h-6 w-6 text-primary" />
-        </div>
-        <h3 className="text-xl font-semibold mb-3 text-foreground">{title}</h3>
-        <p className="text-base text-muted-foreground leading-relaxed">{description}</p>
-      </div>
-    </div>
-  </div>
-);
-
 const ProcessCard = ({ 
   icon: Icon, 
   title, 
@@ -144,7 +121,6 @@ const Index = () => {
                   icon={Heart}
                   title="Build My Profile"
                   description="Create an engaging bio that captures attention and shows your authentic self."
-                  className="cursor-pointer"
                 />
               </Link>
               
@@ -153,7 +129,6 @@ const Index = () => {
                   icon={Zap}
                   title="Prompt Punch-Up"
                   description="Craft standout prompt responses that spark meaningful conversations."
-                  className="cursor-pointer"
                 />
               </Link>
               
@@ -162,7 +137,6 @@ const Index = () => {
                   icon={MessageSquare}
                   title="Conversation Starters"
                   description="Get personalized opening messages that lead to real connections."
-                  className="cursor-pointer"
                 />
               </Link>
             </div>
